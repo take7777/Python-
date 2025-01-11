@@ -1,0 +1,60 @@
+import os
+import shutil
+from datetime import datetime
+import subprocess
+
+# 設定: リポジトリパスとバックアップのルートディレクトリ
+repo_path = '/path/to/your/repository'  # 学習用リポジトリのパス
+backup_root_path = '/path/to/your/backup_folder'  # バックアップのルートフォルダ
+backup_retention_count = 5  # 保持するバックアップの世代数
+commit_message = f"Auto commit and backup on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+# バックアップ対象の拡張子
+file_extensions = ['.py', '.ipynb']
+
+# 1. バックアップ実行（世代管理付き）
+def backup_files():
+    # 日時でバックアップフォルダを作成
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_path = os.path.join(backup_root_path, f'backup_{timestamp}')
+    os.makedirs(backup_path, exist_ok=True)
+
+    for root, dirs, files in os.walk(repo_path):
+        for file in files:
+            if any(file.endswith(ext) for ext in file_extensions):
+                src_file = os.path.join(root, file)
+                dest_file = os.path.join(backup_path, os.path.relpath(src_file, repo_path))
+                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                shutil.copy2(src_file, dest_file)
+                print(f"バックアップ: {src_file} -> {dest_file}")
+    
+    manage_backup_retention()  # 古いバックアップの削除
+
+# 2. 古いバックアップの削除
+def manage_backup_retention():
+    backups = sorted([d for d in os.listdir(backup_root_path) if d.startswith('backup_')])
+    while len(backups) > backup_retention_count:
+        oldest_backup = backups.pop(0)
+        oldest_backup_path = os.path.join(backup_root_path, oldest_backup)
+        shutil.rmtree(oldest_backup_path)
+        print(f"削除: 古いバックアップ {oldest_backup_path}")
+
+# 3. Git操作関数
+def run_git_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}")
+    else:
+        print(f"Success: {result.stdout}")
+
+# 4. GitHubへの自動コミットとプッシュ
+def push_to_github():
+    os.chdir(repo_path)
+    run_git_command("git add .")
+    run_git_command(f'git commit -m "{commit_message}"')
+    run_git_command("git push origin main")
+
+# 5. 実行
+if __name__ == "__main__":
+    backup_files()      # 世代管理付きバックアップ
+    push_to_github()    # GitHubへのプッシュ

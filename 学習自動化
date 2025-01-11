@@ -1,0 +1,27 @@
+import os
+import subprocess
+from datetime import datetime
+
+# 設定: 自分のGitHubリポジトリへのパス
+repo_path = '/path/to/your/repository'  # ここに学習用のリポジトリパスを指定
+commit_message = f"Auto commit on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+# 現在のディレクトリをリポジトリに変更
+os.chdir(repo_path)
+
+# Gitコマンドの実行関数
+def run_git_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}")
+    else:
+        print(f"Success: {result.stdout}")
+
+# 1. 変更をステージング
+run_git_command("git add .")
+
+# 2. 自動コミット
+run_git_command(f'git commit -m "{commit_message}"')
+
+# 3. リモートにプッシュ
+run_git_command("git push origin main")  # ブランチ名が 'main' であることを想定
